@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>قد سمع</title>
+  <link rel="icon" href="icon.png" />
+  <link rel="apple-touch-icon" href="icon.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- YouTube IFrame Player API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <style>
+    /* خط كبير افتراضي لسهولة القراءة */
+    html { font-size: 18px; }
+    @media (min-width: 640px){ html { font-size: 19px; } }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <div class="max-w-6xl mx-auto p-4 sm:p-6">
+    <header class="mb-4 text-center">
+      <img src="icon.png" alt="أيقونة" class="w-16 h-16 mx-auto mb-2 rounded-full shadow"/>
+      <h1 class="text-3xl font-bold text-red-600">قد سمع</h1>
+      <p class="text-sm text-gray-600">مشغّل بسيط داخل الصفحة • تكرار • التالي/السابق</p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <!-- القائمة اليمنى -->
+      <aside class="lg:col-span-1 bg-white rounded-2xl shadow-sm p-4 max-h-[80vh] overflow-auto">
+        <ul id="list" class="space-y-2"></ul>
+      </aside>
+
+      <!-- المشغّل -->
+      <main class="lg:col-span-2 bg-white rounded-2xl shadow-sm p-4">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <div class="text-sm text-gray-500">المقطع الحالي</div>
+            <h2 id="currentTitle" class="text-2xl font-semibold">—</h2>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 text-base">
+            <label class="flex items-center gap-2 select-none"><input id="repeatToggle" type="checkbox" class="w-5 h-5"> تكرار</label>
+            <label class="flex items-center gap-2 select-none"><input id="autonextToggle" type="checkbox" class="w-5 h-5" checked> التالي تلقائيًا</label>
+          </div>
+        </div>
+
+        <div class="aspect-video w-full overflow-hidden rounded-2xl bg-black">
+          <div id="player" class="w-full h-full grid place-items-center text-white text-center text-base">جاري التحميل…</div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 mt-4">
+          <button id="prevBtn" class="rounded-2xl px-5 py-3 bg-gray-200 hover:bg-gray-300 text-lg">السابق</button>
+          <button id="nextBtn" class="rounded-2xl px-5 py-3 bg-red-600 text-white hover:bg-red-700 text-lg">التالي</button>
+          <button id="replayBtn" class="rounded-2xl px-5 py-3 bg-gray-200 hover:bg-gray-300 text-lg">إعادة من البداية</button>
+        </div>
+      </main>
+    </div>
+
+    <footer class="mt-6 text-center text-xs text-gray-500">
+      <p>© قد سمع — يعمل داخل الصفحة بدون فتح يوتيوب خارجيًا</p>
+    </footer>
+  </div>
+
+  <script>
+    // ===== روابط الفيديو (9) =====
+    const IDS = [
+      'zpiesHC2OIs',
+      '0B8b44bUQ0Q',
+      'de4KbpuuJJI',
+      '01o-3opLmJk',
+      's3XwZjHMrfs',
+      'ppaZWQZUQH8',
+      'ossRCda_z1U',
+      'CPx6pzp03Uo',
+      '4BCUwJ_xMTY',
+    ];
+
+    // عناصر DOM
+    const listEl = document.getElementById('list');
+    const currentTitleEl = document.getElementById('currentTitle');
+    const repeatToggle = document.getElementById('repeatToggle');
+    const autonextToggle = document.getElementById('autonextToggle');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const replayBtn = document.getElementById('replayBtn');
+
+    let ITEMS = IDS.map((id, i) => ({ id, title: `المقطع ${i+1}` }));
+    let currentIndex = 0;
+    let YTPlayer = null;
+
+    // بناء القائمة بأزرار كبيرة
+    function renderList(){
+      listEl.innerHTML = '';
+      ITEMS.forEach((it, i) => {
+        const li = document.createElement('li');
+        const active = i === currentIndex;
+        li.className = `rounded-2xl border p-4 ${active? 'border-red-500 bg-red-50':'border-gray-200 bg-white'}`;
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-right text-lg';
+        btn.innerHTML = `<div class="font-medium">${escapeHtml(it.title)}</div>`;
+        btn.addEventListener('click', () => selectIndex(i));
+        li.appendChild(btn);
+        listEl.appendChild(li);
+      });
+    }
+
+    function selectIndex(i){
+      if (i < 0 || i >= ITEMS.length) return;
+      currentIndex = i;
+      loadCurrent(true);
+      renderList();
+    }
+
+    function loadCurrent(autoplay=false){
+      const cur = ITEMS[currentIndex];
+      if (!cur) return;
+      currentTitleEl.textContent = cur.title || '—';
+      if (YTPlayer){
+        if (autoplay) YTPlayer.loadVideoById(cur.id);
+        else YTPlayer.cueVideoById(cur.id);
+      }
+    }
+
+    prevBtn.addEventListener('click', () => {
+      if (currentIndex > 0){ currentIndex--; loadCurrent(true); renderList(); }
+    });
+    nextBtn.addEventListener('click', () => {
+      if (currentIndex < ITEMS.length - 1){ currentIndex++; loadCurrent(true); renderList(); }
+    });
+    replayBtn.addEventListener('click', () => {
+      if (YTPlayer){ YTPlayer.seekTo(0); YTPlayer.playVideo(); }
+    });
+
+    // تشغيل تلقائي للمقطع التالي أو تكرار
+    function onPlayerStateChange(e){
+      if (e.data === YT.PlayerState.ENDED){
+        if (repeatToggle.checked){
+          YTPlayer.seekTo(0); YTPlayer.playVideo();
+          return;
+        }
+        if (autonextToggle.checked && currentIndex < ITEMS.length - 1){
+          currentIndex++;
+          loadCurrent(true);
+          renderList();
+        }
+      }
+    }
+
+    // API الجاهز
+    window.onYouTubeIframeAPIReady = function(){
+      YTPlayer = new YT.Player('player', {
+        height: '390', width: '640',
+        videoId: ITEMS[currentIndex].id,
+        host: 'https://www.youtube-nocookie.com',
+        origin: window.location.origin,
+        playerVars: { rel: 0, modestbranding: 1, playsinline: 1, fs: 1, iv_load_policy: 3, enablejsapi: 1 },
+        events: {
+          onReady: () => {
+            document.getElementById('player').textContent = '';
+            loadCurrent(false);
+          },
+          onStateChange: onPlayerStateChange,
+          onError: () => {
+            // fallback iframe بسيط
+            const cur = ITEMS[currentIndex];
+            const iframe = document.createElement('iframe');
+            iframe.className = 'w-full h-full';
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+            iframe.src = `https://www.youtube-nocookie.com/embed/${cur.id}?rel=0&modestbranding=1&playsinline=1`;
+            const box = document.getElementById('player');
+            box.innerHTML = '';
+            box.appendChild(iframe);
+          }
+        }
+      });
+    }
+
+    // جلب عناوين يوتيوب من oEmbed (بدون API Key)
+    async function fetchTitleFor(id){
+      const url = `https://www.youtube.com/watch?v=${id}`;
+      const api = `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url)}`;
+      try{
+        const res = await fetch(api);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        return data.title || '';
+      }catch{ return ''; }
+    }
+
+    (async function init(){
+      // حدّث العناوين من يوتيوب (اختياري)
+      for (let i=0; i<ITEMS.length; i++){
+        const t = await fetchTitleFor(ITEMS[i].id);
+        if (t) ITEMS[i].title = t;
+      }
+      renderList();
+      loadCurrent(false);
+    })();
+
+    function escapeHtml(s=''){return s.replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]))}
+  </script>
+</body>
+</html>
